@@ -1,0 +1,15 @@
+{
+  "name": "jfm-manager",
+  "version": "0.1.0",
+  "description": "Sistema desktop para gestão interna da JF Mecatrônica (ponto e futuro módulo de notas de serviço).",
+  "main": "src/main/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "Lucas Maués",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^40.6.1"
+  }
+}
