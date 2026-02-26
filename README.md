@@ -1,11 +1,15 @@
 # 🚀 JFM Manager
-Versão atual: 0.1.0
-Aplicação desktop desenvolvida com Electron e Node.js para automação de processos internos.
+
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Status](https://img.shields.io/badge/status-em%20desenvolvimento-orange)
+![Electron](https://img.shields.io/badge/Electron-40.x-9feaf9)
+
+Sistema desktop desenvolvido com Electron, Node.js e React para gestão interna da JF Mecatrônica.
 
 ---
 
 ## 📌 Sobre o Projeto
-O **JFM Manager** é uma aplicação desktop criada para auxiliar na gestão operacional da empresa JF Mecatrônica.
+O **JFM Manager** é uma aplicação desktop criada para centralizar e organizar processos internos da empresa JF Mecatrônica.
 
 A primeira versão contempla:
 
@@ -19,11 +23,12 @@ O projeto foi desenvolvido com foco em organização, versionamento profissional
 ---
 
 ## 🛠 Tecnologias Utilizadas
-- ⚡ Electron  
-- 🟢 Node.js  
-- 💻 JavaScript  
-- 🌿 Git  
-- 🐙 GitHub  
+- ⚡ Electron
+- 🟢 Node.js
+- ⚡ Vite
+- ⚛️ React
+- 💻 JavaScript
+- 🌿 Git / 🐙 GitHub
 
 ---
 
@@ -39,7 +44,12 @@ cd jfm-manager
 npm install
 ```
 
-### 3️⃣ Executar o app
+### 3️⃣ Executar (desenvolvimento)
+```bash
+npm run dev
+```
+
+### 4️⃣ Executar (modo padrão)
 ```bash
 npm start
 ```
@@ -51,25 +61,30 @@ npm start
 jfm-manager/
 │
 ├── src/
-│   └── main/
+│   └── main/              # Processo principal (Electron)
 │       └── main.js
+│
+├── renderer/              # Interface (Vite + React)
+│   ├── package.json
+│   └── ...
 │
 ├── package.json
 ├── package-lock.json
-└── .gitignore
+├── .gitignore
+└── README.md
 ```
 
 ---
 
 ## 📈 Roadmap
 
-- [ ] 🎨 Interface gráfica real (HTML/CSS)
+- [ ]  🎨 Melhorar UI/UX (layout, componentes, telas)
 - [ ] 👥 Módulo de funcionários
 - [ ] 💾 Persistência de dados
 - [ ] ⏳ Cálculo de horas extras
 - [ ] 🌙 Adicional noturno (CLT)
 - [ ] 📊 Geração de relatórios
-- [ ] 🧾 Emissão de notas de serviço
+- [ ] 🧾 Emissão de ordens de serviço
 
 ---
 
@@ -77,14 +92,14 @@ jfm-manager/
 
 🟢 Estrutura inicial concluída  
 🟡 Interface básica funcional  
-🔜 Em desenvolvimento contínuo  
+🔜 Em desenvolvimento contínuo
 
 ---
 
 ## 👨‍💻 Autor
 
 Lucas Maués  
-Desenvolvedor em formação  
+Desenvolvedor Full Stack em formação
 
 ---
 
