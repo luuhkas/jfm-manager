@@ -1,15 +1,21 @@
 {
   "name": "jfm-manager",
   "version": "0.1.0",
-  "description": "Sistema desktop para gestão interna da JF Mecatrônica (ponto e futuro módulo de notas de serviço).",
+  "description": "Sistema desktop para gestão interna e controle de ordens de serviço da JF Mecatrônica.",
   "main": "src/main/main.js",
   "type": "commonjs",
   "scripts": {
-    "start": "electron ."
+  "start": "electron .",
+  "dev": "concurrently -k \"npm --prefix renderer run dev\" \"npm run dev:electron\"",
+  "dev:electron": "wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .",
+  "build": "npm --prefix renderer run build"
   },
   "author": "Lucas Maués",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^40.6.1"
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^40.6.1",
+    "wait-on": "^9.0.4"
   }
 }
