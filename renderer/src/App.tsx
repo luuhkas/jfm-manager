@@ -1,7 +1,12 @@
 import PontoPage from './modules/ponto/PontoPage';
+import { ErrorBoundary } from './ErrorBoundary';
 
 function App() {
-  return <PontoPage />;
+  return (
+    <ErrorBoundary>
+      <PontoPage />
+    </ErrorBoundary>
+  );
 }
 
 export default App;
