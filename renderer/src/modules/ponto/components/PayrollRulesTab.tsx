@@ -10,7 +10,7 @@ export function PayrollRulesTab({ monthStartDate }: PayrollRulesTabProps) {
 
   return (
     <section style={{ marginBottom: 20 }}>
-      <h2 style={{ fontSize: 22, margin: "0 0 12px" }}>Regras da folha</h2>
+      <h2 className="section-title spaced">Regras da folha</h2>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         {[

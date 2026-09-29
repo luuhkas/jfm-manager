@@ -83,7 +83,7 @@ export function EsocialTab({
 
   return (
     <section>
-      <h2 style={{ fontSize: 22, margin: "0 0 4px" }}>eSocial — S-1200</h2>
+      <h2 className="section-title">eSocial — S-1200</h2>
       <p style={{ color: "var(--muted)", margin: "0 0 20px" }}>
         Exportação de remuneração mensal (S-1200) para a competência {monthKey}.
         Confira os dados com sua contabilidade antes de transmitir.
@@ -131,7 +131,7 @@ export function EsocialTab({
             type="button"
             onClick={handleGenerate}
             disabled={generating || activeEmployees.length === 0}
-            style={{ width: "100%", background: "var(--accent-strong)", color: "#fff", border: "none" }}
+            className="btn-primary" style={{ width: "100%" }}
           >
             {generating ? "Gerando XML..." : `Gerar S-1200 (${activeEmployees.length} trabalhadores)`}
           </button>

@@ -23,7 +23,7 @@ const actionLabels: Record<string, string> = {
 export function HistoryTab({ auditLogs }: HistoryTabProps) {
   return (
     <section style={{ marginBottom: 20 }}>
-      <h2 style={{ fontSize: 22, margin: "0 0 12px" }}>Histórico</h2>
+      <h2 className="section-title spaced">Histórico</h2>
 
       {auditLogs.length === 0 ? (
         <div style={{ opacity: 0.75 }}>Nenhuma alteração registrada nesta competência.</div>

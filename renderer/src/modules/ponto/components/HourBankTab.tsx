@@ -20,6 +20,7 @@ export function HourBankTab({
   onAddEntry,
   onDeleteEntry,
 }: HourBankTabProps) {
+  const [formOpen, setFormOpen] = useState(false);
   const [employeeId, setEmployeeId] = useState(() => employees[0]?.id ?? "");
   const [minutes, setMinutes] = useState("");
   const [note, setNote] = useState("");
@@ -59,7 +60,7 @@ export function HourBankTab({
 
   return (
     <section>
-      <h2 style={{ fontSize: 22, margin: "0 0 4px" }}>Banco de Horas</h2>
+      <h2 className="section-title">Banco de Horas</h2>
       <p style={{ color: "var(--muted)", margin: "0 0 16px" }}>
         Saldo acumulado de horas extras e compensações da competência {monthKey}.
       </p>
@@ -108,41 +109,51 @@ export function HourBankTab({
         })}
       </div>
 
-      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 18, marginBottom: 20, background: "var(--surface-soft)" }}>
-        <h3 style={{ margin: "0 0 14px" }}>Registrar compensação / lançamento</h3>
-        {error ? <div style={{ color: "var(--danger)", marginBottom: 10 }}>{error}</div> : null}
-        <form onSubmit={handleAdd} style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <label className="field-label">
-            Funcionário
-            <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
-              {activeEmployees.map((emp) => (
-                <option key={emp.id} value={emp.id}>{emp.name}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field-label">
-            Minutos (+ crédito / - débito)
-            <input
-              type="number"
-              value={minutes}
-              onChange={(e) => setMinutes(e.target.value)}
-              placeholder="Ex: 60 ou -30"
-              style={{ width: 150 }}
-            />
-          </label>
-          <label className="field-label" style={{ flex: 1, minWidth: 200 }}>
-            Observação
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Ex: compensado em folga"
-            />
-          </label>
-          <button type="submit" disabled={saving}>
-            {saving ? "Salvando..." : "Lançar"}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: formOpen ? 12 : 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Lançamentos</span>
+          <button type="button" className="btn-ghost btn-sm" onClick={() => setFormOpen((v) => !v)}>
+            {formOpen ? "Cancelar" : "+ Novo lançamento"}
           </button>
-        </form>
+        </div>
+        {formOpen ? (
+          <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface-soft)" }}>
+            {error ? <div style={{ color: "var(--danger)", marginBottom: 10, fontSize: 13 }}>{error}</div> : null}
+            <form onSubmit={async (e) => { await handleAdd(e); setFormOpen(false); }} style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <label className="field-label">
+                Funcionário
+                <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
+                  {activeEmployees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>{emp.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-label">
+                Minutos (+ crédito / − débito)
+                <input
+                  type="number"
+                  value={minutes}
+                  onChange={(e) => setMinutes(e.target.value)}
+                  placeholder="Ex: 60 ou -30"
+                  style={{ width: 150 }}
+                  autoFocus
+                />
+              </label>
+              <label className="field-label" style={{ flex: 1, minWidth: 200 }}>
+                Observação
+                <input
+                  type="text"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Ex: compensado em folga"
+                />
+              </label>
+              <button type="submit" disabled={saving}>
+                {saving ? "Salvando..." : "Lançar"}
+              </button>
+            </form>
+          </div>
+        ) : null}
       </div>
 
       {hourBankEntries.length > 0 ? (

@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
 import type {
   AppSettings,
   AuditLog,
   Employee,
-  EmploymentContract,
   EsocialRemuneracao,
   Holiday,
   HourBankEntry,
@@ -13,7 +11,6 @@ import type {
   TimeAdjustment,
   TimeEvent,
   TimeEventType,
-  Weekday,
   WorkOrder,
 } from "./pontoTypes";
 import { buildPayrollCsv, getMonthDates, summarizePayrollMonth, toLocalDateKey } from "./pontoUtils";
@@ -49,13 +46,8 @@ import {
   upsertHoliday,
   upsertWorkOrder,
 } from "./pontoApi";
-import {
-  emptyEmployeeForm,
-  type AdjustmentFormState,
-  type EmployeeFormState,
-  type HolidayFormState,
-  type TabKey,
-} from "./pontoPageShared";
+import type { TabKey } from "./pontoPageShared";
+import { buildEmployeeFromForm, type AdjustmentFormValues, type EmployeeFormValues, type HolidayFormValues } from "./forms";
 import { applyTheme } from "./components/AppConfigTab";
 
 function nowISO() {
@@ -66,21 +58,6 @@ function newId() {
   return crypto.randomUUID();
 }
 
-function parseDecimal(value: string, fallback = 0) {
-  const normalized = value.replace(",", ".").trim();
-  if (!normalized) return fallback;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function parseMoneyToCents(value: string) {
-  return Math.round(parseDecimal(value) * 100);
-}
-
-function centsToInputValue(cents: number) {
-  return (cents / 100).toFixed(2);
-}
-
 function toMonthKey(dateKey: string) {
   return dateKey.slice(0, 7);
 }
@@ -89,56 +66,6 @@ function toLocalDateTimeIso(dateKey: string, time: string) {
   const [hour = "00", minute = "00"] = time.split(":");
   const date = new Date(`${dateKey}T${hour.padStart(2, "0")}:${minute.padStart(2, "0")}:00`);
   return date.toISOString();
-}
-
-function employeeToForm(employee: Employee): EmployeeFormState {
-  return {
-    name: employee.name,
-    cpf: employee.cpf,
-    role: employee.role,
-    admissionDate: employee.admissionDate,
-    status: employee.status,
-    paymentType: employee.contract?.paymentType ?? "monthly",
-    monthlySalary: employee.contract ? centsToInputValue(employee.contract.monthlySalaryCents) : "",
-    hourlyRate: employee.contract ? centsToInputValue(employee.contract.hourlyRateCents) : "",
-    weeklyHours: String(employee.contract?.weeklyHours ?? 44),
-    dailyMinutes: String(employee.contract?.dailyMinutes ?? 480),
-    monthlyHours: String(employee.contract?.monthlyHours ?? 220),
-    workDays: employee.contract?.workDays ?? [1, 2, 3, 4, 5],
-    overtimePercent: String(employee.contract?.overtimePercent ?? 50),
-    nightPercent: String(employee.contract?.nightPercent ?? 20),
-  };
-}
-
-function buildEmployeeFromForm(form: EmployeeFormState, existing?: Employee): Employee {
-  const employeeId = existing?.id ?? newId();
-  const contract: EmploymentContract = {
-    id: existing?.contract?.id ?? newId(),
-    employeeId,
-    paymentType: form.paymentType,
-    monthlySalaryCents: parseMoneyToCents(form.monthlySalary),
-    hourlyRateCents: parseMoneyToCents(form.hourlyRate),
-    weeklyHours: parseDecimal(form.weeklyHours, 44),
-    dailyMinutes: Math.round(parseDecimal(form.dailyMinutes, 480)),
-    monthlyHours: parseDecimal(form.monthlyHours, 220),
-    workDays: form.workDays,
-    overtimePercent: parseDecimal(form.overtimePercent, 50),
-    nightPercent: parseDecimal(form.nightPercent, 20),
-    startDate: form.admissionDate || toLocalDateKey(new Date()),
-    endDate: null,
-    active: true,
-  };
-  const status = form.status;
-  return {
-    id: employeeId,
-    name: form.name.trim(),
-    cpf: form.cpf.trim(),
-    role: form.role.trim(),
-    admissionDate: form.admissionDate,
-    status,
-    active: status !== "inactive",
-    contract,
-  };
 }
 
 function sortEmployees(employees: Employee[]) {
@@ -158,21 +85,7 @@ export function usePontoPageState() {
   const [appSettings, setAppSettings] = useState<AppSettings>({});
   const [workDate, setWorkDate] = useState(() => toLocalDateKey(new Date()));
   const [monthKey, setMonthKey] = useState(() => toMonthKey(toLocalDateKey(new Date())));
-  const [employeeForm, setEmployeeForm] = useState<EmployeeFormState>(emptyEmployeeForm);
-  const [holidayForm, setHolidayForm] = useState<HolidayFormState>({
-    date: toLocalDateKey(new Date()),
-    name: "",
-    scope: "company",
-  });
-  const [adjustmentForm, setAdjustmentForm] = useState<AdjustmentFormState>({
-    employeeId: "",
-    workDate: toLocalDateKey(new Date()),
-    time: "08:00",
-    type: "IN",
-    reason: "",
-  });
   const [activeTab, setActiveTab] = useState<TabKey>("today");
-  const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -232,10 +145,6 @@ export function usePontoPageState() {
           const settings = loadedSettings as AppSettings;
           setAppSettings(settings);
           if (settings.theme && settings.theme !== "system") applyTheme(settings.theme);
-          setAdjustmentForm((cur) => ({
-            ...cur,
-            employeeId: cur.employeeId || loadedEmployees[0]?.id || "",
-          }));
           if (loadedEmployees.length === 0) setShowOnboarding(true);
         }
       } catch (err) {
@@ -247,52 +156,16 @@ export function usePontoPageState() {
     return () => { cancelled = true; };
   }, [monthEndDate, monthKey, monthStartDate]);
 
-  function updateEmployeeForm(field: keyof EmployeeFormState, value: string) {
-    if (field === "cpf") {
-      const digits = value.replace(/\D/g, "").slice(0, 11);
-      const formatted =
-        digits.length <= 3 ? digits :
-        digits.length <= 6 ? `${digits.slice(0, 3)}.${digits.slice(3)}` :
-        digits.length <= 9 ? `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}` :
-        `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
-      setEmployeeForm((cur) => ({ ...cur, cpf: formatted }));
-      return;
-    }
-    setEmployeeForm((cur) => ({ ...cur, [field]: value }));
-  }
-
-  function toggleWorkDay(day: Weekday) {
-    setEmployeeForm((cur) => {
-      const has = cur.workDays.includes(day);
-      const workDays = has ? cur.workDays.filter((d) => d !== day) : [...cur.workDays, day];
-      return { ...cur, workDays: workDays.sort((a, b) => a - b) };
-    });
-  }
-
-  function updateAdjustmentForm(field: keyof AdjustmentFormState, value: string) {
-    setAdjustmentForm((cur) => ({ ...cur, [field]: value }));
-  }
-
   function changeWorkDate(dateKey: string) {
     setWorkDate(dateKey);
     setMonthKey(toMonthKey(dateKey));
-    setAdjustmentForm((cur) => ({ ...cur, workDate: dateKey }));
-    setHolidayForm((cur) => ({ ...cur, date: dateKey }));
   }
 
   function changeMonth(month: string) {
     setMonthKey(month);
     if (month !== toMonthKey(workDate)) {
-      const nextDate = `${month}-01`;
-      setWorkDate(nextDate);
-      setAdjustmentForm((cur) => ({ ...cur, workDate: nextDate }));
-      setHolidayForm((cur) => ({ ...cur, date: nextDate }));
+      setWorkDate(`${month}-01`);
     }
-  }
-
-  function resetEmployeeForm() {
-    setEmployeeForm(emptyEmployeeForm);
-    setEditingEmployeeId(null);
   }
 
   function employeeEventsToday(employeeId: string) {
@@ -355,31 +228,20 @@ export function usePontoPageState() {
     setSuccessMessage(`${type === "IN" ? "Entrada" : "Saída"} registrada para ${eligible.length} funcionário(s).`);
   }
 
-  async function saveEmployee(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!employeeForm.name.trim()) { setError("Nome do funcionário é obrigatório."); return; }
-    if (employeeForm.cpf.trim()) {
-      const digits = employeeForm.cpf.replace(/\D/g, "");
-      if (digits.length !== 11) { setError("CPF inválido. Informe os 11 dígitos."); return; }
-    }
-    if (employeeForm.paymentType === "monthly" && parseMoneyToCents(employeeForm.monthlySalary) <= 0) {
-      setError("Salário mensal deve ser maior que zero."); return;
-    }
-    if (employeeForm.paymentType === "hourly" && parseMoneyToCents(employeeForm.hourlyRate) <= 0) {
-      setError("Valor da hora deve ser maior que zero."); return;
-    }
-    const existing = employees.find((e) => e.id === editingEmployeeId);
-    const employee = buildEmployeeFromForm(employeeForm, existing);
+  async function saveEmployee(values: EmployeeFormValues, editingId: string | null): Promise<boolean> {
+    const existing = employees.find((e) => e.id === editingId);
+    const employee = buildEmployeeFromForm(values, existing);
     setError(null);
     setSuccessMessage(null);
     try {
       await upsertEmployees([employee]);
       setEmployees((prev) => sortEmployees([...prev.filter((e) => e.id !== employee.id), employee]));
-      setAdjustmentForm((cur) => ({ ...cur, employeeId: cur.employeeId || employee.id }));
-      resetEmployeeForm();
       if (showOnboarding) setShowOnboarding(false);
+      setSuccessMessage(existing ? "Funcionário atualizado." : "Funcionário cadastrado.");
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao salvar funcionário.");
+      return false;
     }
   }
 
@@ -395,40 +257,33 @@ export function usePontoPageState() {
     }
   }
 
-  function editEmployee(employee: Employee) {
-    setEditingEmployeeId(employee.id);
-    setEmployeeForm(employeeToForm(employee));
-    setActiveTab("employees");
-  }
-
-  async function deleteEmployee(employee: Employee) {
-    if (!window.confirm(`Excluir ${employee.name}? Só funciona se ele não tiver registros de ponto.`)) return;
+  async function deleteEmployee(employee: Employee): Promise<boolean> {
+    if (!window.confirm(`Excluir ${employee.name}? Só funciona se ele não tiver registros de ponto.`)) return false;
     setError(null);
     try {
       await deleteEmployeeIfUnused(employee.id);
       setEmployees((prev) => prev.filter((e) => e.id !== employee.id));
-      if (editingEmployeeId === employee.id) resetEmployeeForm();
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao excluir funcionário.");
+      return false;
     }
   }
 
-  async function saveAdjustment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isMonthClosed) { setError("Competência fechada."); return; }
-    if (!adjustmentForm.employeeId) { setError("Selecione um funcionário."); return; }
-    if (!adjustmentForm.reason.trim()) { setError("Informe o motivo do ajuste."); return; }
+  async function saveAdjustment(values: AdjustmentFormValues): Promise<boolean> {
+    if (isMonthClosed) { setError("Competência fechada."); return false; }
     const adjustment: TimeAdjustment = {
       id: newId(),
       eventId: newId(),
-      employeeId: adjustmentForm.employeeId,
-      timestamp: toLocalDateTimeIso(adjustmentForm.workDate, adjustmentForm.time),
-      workDate: adjustmentForm.workDate,
-      type: adjustmentForm.type,
-      reason: adjustmentForm.reason.trim(),
+      employeeId: values.employeeId,
+      timestamp: toLocalDateTimeIso(values.workDate, values.time),
+      workDate: values.workDate,
+      type: values.type,
+      reason: values.reason.trim(),
       createdAt: nowISO(),
     };
     setError(null);
+    setSuccessMessage(null);
     try {
       const saved = await addAdjustment(adjustment);
       setAdjustments((prev) => [saved, ...prev]);
@@ -441,24 +296,27 @@ export function usePontoPageState() {
         source: "adjustment",
         note: saved.reason,
       }]);
-      setAdjustmentForm((cur) => ({ ...cur, reason: "" }));
+      setSuccessMessage("Ajuste salvo.");
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao salvar ajuste.");
+      return false;
     }
   }
 
-  async function saveHoliday(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isMonthClosed) { setError("Competência fechada."); return; }
-    if (!holidayForm.name.trim()) { setError("Informe o nome do feriado."); return; }
-    const holiday: Holiday = { id: newId(), date: holidayForm.date, name: holidayForm.name.trim(), scope: holidayForm.scope };
+  async function saveHoliday(values: HolidayFormValues): Promise<boolean> {
+    if (isMonthClosed) { setError("Competência fechada."); return false; }
+    const holiday: Holiday = { id: newId(), date: values.date, name: values.name.trim(), scope: values.scope };
     setError(null);
+    setSuccessMessage(null);
     try {
       const saved = await upsertHoliday(holiday);
       setHolidays((prev) => [...prev.filter((h) => h.id !== saved.id), saved].sort((a, b) => a.date.localeCompare(b.date)));
-      setHolidayForm((cur) => ({ ...cur, name: "" }));
+      setSuccessMessage("Feriado salvo.");
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao salvar feriado.");
+      return false;
     }
   }
 
@@ -631,7 +489,6 @@ export function usePontoPageState() {
 
   return {
     activeTab,
-    adjustmentForm,
     adjustments,
     auditLogs,
     canRecordForDate,
@@ -639,14 +496,10 @@ export function usePontoPageState() {
     changeMonth,
     changeWorkDate,
     closeCurrentMonth,
-    editEmployee,
     deleteEmployee,
-    editingEmployeeId,
-    employeeForm,
     employees,
     eventsByEmployee,
     error,
-    holidayForm,
     holidays,
     hourBankEntries,
     workOrders,
@@ -663,19 +516,14 @@ export function usePontoPageState() {
     undoRegister,
     removeHoliday,
     reopenCurrentMonth,
-    resetEmployeeForm,
     saveAdjustment,
     saveEmployee,
     saveHoliday,
     setActiveTab,
-    setHolidayForm,
     showOnboarding,
     setShowOnboarding,
     successMessage,
     toggleEmployeeActive,
-    toggleWorkDay,
-    updateAdjustmentForm,
-    updateEmployeeForm,
     workDate,
     canRegister,
     exportPayrollCsv,

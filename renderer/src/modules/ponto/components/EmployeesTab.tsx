@@ -1,41 +1,95 @@
 import { useState } from "react";
-import type { FormEvent } from "react";
-import type { Employee, PaymentType, SalaryHistoryEntry, Weekday } from "../pontoTypes";
-import type { EmployeeFormState } from "../pontoPageShared";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { Employee, SalaryHistoryEntry, Weekday } from "../pontoTypes";
 import { employeeStatusLabels, weekdayOptions } from "../pontoPageShared";
+import {
+  employeeFormSchema,
+  employeeToFormValues,
+  emptyEmployeeFormValues,
+  maskCpf,
+  type EmployeeFormValues,
+} from "../forms";
 import { formatCurrencyFromCents } from "../pontoUtils";
 
 interface EmployeesTabProps {
-  employeeForm: EmployeeFormState;
-  editingEmployeeId: string | null;
   employees: Employee[];
-  onSaveEmployee: (event: FormEvent<HTMLFormElement>) => void;
-  onUpdateForm: (field: keyof EmployeeFormState, value: string) => void;
-  onToggleWorkDay: (day: Weekday) => void;
-  onResetEmployeeForm: () => void;
-  onEditEmployee: (employee: Employee) => void;
+  onSaveEmployee: (values: EmployeeFormValues, editingId: string | null) => Promise<boolean>;
   onToggleEmployeeActive: (employee: Employee) => void;
-  onDeleteEmployee: (employee: Employee) => void;
+  onDeleteEmployee: (employee: Employee) => Promise<boolean>;
   onLoadSalaryHistory: (employeeId: string) => Promise<SalaryHistoryEntry[]>;
 }
 
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <span className="field-error">{message}</span>;
+}
+
 export function EmployeesTab({
-  employeeForm,
-  editingEmployeeId,
   employees,
   onSaveEmployee,
-  onUpdateForm,
-  onToggleWorkDay,
-  onResetEmployeeForm,
-  onEditEmployee,
   onToggleEmployeeActive,
   onDeleteEmployee,
   onLoadSalaryHistory,
 }: EmployeesTabProps) {
   const [search, setSearch] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [salaryHistory, setSalaryHistory] = useState<SalaryHistoryEntry[] | null>(null);
   const [historyName, setHistoryName] = useState("");
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<EmployeeFormValues>({
+    resolver: zodResolver(employeeFormSchema),
+    defaultValues: emptyEmployeeFormValues,
+  });
+
+  const paymentType = watch("paymentType");
+  const workDays = watch("workDays");
+
+  function toggleWorkDay(day: Weekday) {
+    const has = workDays.includes(day);
+    setValue(
+      "workDays",
+      has ? workDays.filter((d) => d !== day) : [...workDays, day].sort((a, b) => a - b),
+      { shouldValidate: true }
+    );
+  }
+
+  function openNewForm() {
+    setEditingId(null);
+    reset(emptyEmployeeFormValues);
+    setFormOpen(true);
+  }
+
+  function openEditForm(emp: Employee) {
+    setEditingId(emp.id);
+    reset(employeeToFormValues(emp));
+    setFormOpen(true);
+  }
+
+  function closeForm() {
+    setEditingId(null);
+    reset(emptyEmployeeFormValues);
+    setFormOpen(false);
+  }
+
+  const submit = handleSubmit(async (values) => {
+    const ok = await onSaveEmployee(values, editingId);
+    if (ok) closeForm();
+  });
+
+  async function handleDelete(emp: Employee) {
+    const deleted = await onDeleteEmployee(emp);
+    if (deleted && editingId === emp.id) closeForm();
+  }
 
   async function handleShowHistory(emp: Employee) {
     setLoadingHistory(true);
@@ -56,31 +110,32 @@ export function EmployeesTab({
     <>
       {salaryHistory ? (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 28, maxWidth: 560, width: "100%", maxHeight: "80vh", overflowY: "auto" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: 28, maxWidth: 560, width: "100%", maxHeight: "80vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ margin: 0 }}>Histórico de salário — {historyName}</h3>
-              <button type="button" onClick={() => setSalaryHistory(null)} style={{ padding: "4px 10px" }}>Fechar</button>
+              <button type="button" className="btn-sm" onClick={() => setSalaryHistory(null)}>Fechar</button>
             </div>
             {salaryHistory.length === 0 ? (
               <div style={{ color: "var(--muted)" }}>Nenhuma alteração registrada.</div>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table>
                 <thead>
                   <tr>
-                    {["Data vigência", "Tipo", "Salário/Hora", "Registrado em"].map((h) => (
-                      <th key={h} style={{ textAlign: "left", borderBottom: "1px solid var(--border)", padding: "6px 8px" }}>{h}</th>
-                    ))}
+                    <th>Data vigência</th>
+                    <th>Tipo</th>
+                    <th>Salário/Hora</th>
+                    <th>Registrado em</th>
                   </tr>
                 </thead>
                 <tbody>
                   {salaryHistory.map((h) => (
                     <tr key={h.id}>
-                      <td style={{ borderBottom: "1px solid var(--border)", padding: "6px 8px" }}>{h.effectiveFrom}</td>
-                      <td style={{ borderBottom: "1px solid var(--border)", padding: "6px 8px" }}>{h.paymentType === "monthly" ? "Mensalista" : "Horista"}</td>
-                      <td style={{ borderBottom: "1px solid var(--border)", padding: "6px 8px" }}>
+                      <td>{h.effectiveFrom}</td>
+                      <td>{h.paymentType === "monthly" ? "Mensalista" : "Horista"}</td>
+                      <td>
                         {h.paymentType === "monthly" ? formatCurrencyFromCents(h.monthlySalaryCents) : formatCurrencyFromCents(h.hourlyRateCents) + "/h"}
                       </td>
-                      <td style={{ borderBottom: "1px solid var(--border)", padding: "6px 8px", color: "var(--muted)", fontSize: "0.82rem" }}>
+                      <td style={{ color: "var(--muted)", fontSize: "0.82rem" }}>
                         {new Date(h.createdAt).toLocaleDateString("pt-BR")}
                       </td>
                     </tr>
@@ -92,157 +147,169 @@ export function EmployeesTab({
         </div>
       ) : null}
 
-      <form
-        onSubmit={onSaveEmployee}
-        style={{
-          display: "grid",
-          gap: 12,
-          gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-          alignItems: "end",
-          marginBottom: 24,
-          padding: 18,
-          border: "1px solid var(--border)",
-          borderRadius: 10,
-          background: "var(--surface-soft)",
-        }}
-      >
-        <div className="form-section-title">{editingEmployeeId ? "Editando funcionário" : "Novo funcionário"}</div>
-
-        <label className="field-label">
-          Nome
-          <input
-            value={employeeForm.name}
-            onChange={(e) => onUpdateForm("name", e.target.value)}
-            placeholder="Nome completo"
-          />
-        </label>
-
-        <label className="field-label">
-          CPF
-          <input
-            value={employeeForm.cpf}
-            onChange={(e) => onUpdateForm("cpf", e.target.value)}
-            placeholder="000.000.000-00"
-          />
-        </label>
-
-        <label className="field-label">
-          Cargo
-          <input
-            value={employeeForm.role}
-            onChange={(e) => onUpdateForm("role", e.target.value)}
-            placeholder="Mecânico"
-          />
-        </label>
-
-        <label className="field-label">
-          Admissão
-          <input
-            type="date"
-            value={employeeForm.admissionDate}
-            onChange={(e) => onUpdateForm("admissionDate", e.target.value)}
-          />
-        </label>
-
-        <label className="field-label">
-          Status
-          <select value={employeeForm.status} onChange={(e) => onUpdateForm("status", e.target.value)}>
-            <option value="trial">{employeeStatusLabels.trial}</option>
-            <option value="active">{employeeStatusLabels.active}</option>
-            <option value="inactive">{employeeStatusLabels.inactive}</option>
-          </select>
-        </label>
-
-        <div className="form-section-title">Contrato</div>
-
-        <label className="field-label">
-          Tipo
-          <select value={employeeForm.paymentType} onChange={(e) => onUpdateForm("paymentType", e.target.value as PaymentType)}>
-            <option value="monthly">Mensalista</option>
-            <option value="hourly">Horista</option>
-          </select>
-        </label>
-
-        <label className="field-label">
-          Salário mensal
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={employeeForm.monthlySalary}
-            onChange={(e) => onUpdateForm("monthlySalary", e.target.value)}
-            placeholder="2500.00"
-            disabled={employeeForm.paymentType !== "monthly"}
-          />
-        </label>
-
-        <label className="field-label">
-          Valor da hora
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={employeeForm.hourlyRate}
-            onChange={(e) => onUpdateForm("hourlyRate", e.target.value)}
-            placeholder="15.00"
-            disabled={employeeForm.paymentType !== "hourly"}
-          />
-        </label>
-
-        <details className="advanced-fields">
-          <summary>Regras avançadas de jornada</summary>
-          <div className="advanced-fields-grid">
-            <label className="field-label">
-              Jornada semanal (h)
-              <input type="number" min="1" step="0.5" value={employeeForm.weeklyHours} onChange={(e) => onUpdateForm("weeklyHours", e.target.value)} />
-            </label>
-            <label className="field-label">
-              Minutos por dia
-              <input type="number" min="1" step="1" value={employeeForm.dailyMinutes} onChange={(e) => onUpdateForm("dailyMinutes", e.target.value)} />
-            </label>
-            <label className="field-label">
-              Horas mensais (h)
-              <input type="number" min="1" step="0.5" value={employeeForm.monthlyHours} onChange={(e) => onUpdateForm("monthlyHours", e.target.value)} />
-            </label>
-            <fieldset style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
-              <legend style={{ fontWeight: 600 }}>Dias de trabalho</legend>
-              {weekdayOptions.map((day) => (
-                <label key={day.value} style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
-                  <input type="checkbox" checked={employeeForm.workDays.includes(day.value)} onChange={() => onToggleWorkDay(day.value)} />
-                  {day.label}
-                </label>
-              ))}
-            </fieldset>
-            <label className="field-label">
-              Extra %
-              <input type="number" min="0" step="1" value={employeeForm.overtimePercent} onChange={(e) => onUpdateForm("overtimePercent", e.target.value)} />
-            </label>
-            <label className="field-label">
-              Noturno %
-              <input type="number" min="0" step="1" value={employeeForm.nightPercent} onChange={(e) => onUpdateForm("nightPercent", e.target.value)} />
-            </label>
-          </div>
-        </details>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center", gridColumn: "1 / -1" }}>
-          <button type="submit">{editingEmployeeId ? "Salvar alterações" : "Cadastrar funcionário"}</button>
-          {editingEmployeeId ? <button type="button" onClick={onResetEmployeeForm}>Cancelar</button> : null}
-        </div>
-      </form>
-
-      {employees.length > 0 ? (
-        <section>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
-            <h2 style={{ fontSize: 20, margin: 0 }}>Funcionários ({employees.length})</h2>
+      {/* ── Cabeçalho da lista ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+        <h2 className="section-title" style={{ margin: 0 }}>Funcionários {employees.length > 0 ? `(${employees.length})` : ""}</h2>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {employees.length > 0 ? (
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nome, cargo ou CPF..."
-              style={{ flex: 1, minWidth: 200, maxWidth: 340 }}
+              placeholder="Buscar..."
+              style={{ width: 200 }}
             />
-          </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => (formOpen ? closeForm() : openNewForm())}
+            className={formOpen ? undefined : "btn-primary"}
+          >
+            {formOpen ? "Cancelar" : "+ Novo funcionário"}
+          </button>
+        </div>
+      </div>
 
+      {formOpen ? (
+        <form
+          onSubmit={submit}
+          noValidate
+          style={{
+            display: "grid",
+            gap: 12,
+            gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+            alignItems: "start",
+            marginBottom: 24,
+            padding: 18,
+            border: "1px solid var(--border)",
+            borderRadius: "var(--r-md)",
+            background: "var(--surface-soft)",
+          }}
+        >
+          <div className="form-section-title">{editingId ? "Editando funcionário" : "Novo funcionário"}</div>
+
+          <label className="field-label">
+            Nome
+            <input {...register("name")} placeholder="Nome completo" aria-invalid={!!errors.name} />
+            <FieldError message={errors.name?.message} />
+          </label>
+
+          <label className="field-label">
+            CPF
+            <input
+              {...register("cpf", {
+                onChange: (e) => setValue("cpf", maskCpf(e.target.value)),
+              })}
+              placeholder="000.000.000-00"
+              aria-invalid={!!errors.cpf}
+            />
+            <FieldError message={errors.cpf?.message} />
+          </label>
+
+          <label className="field-label">
+            Cargo
+            <input {...register("role")} placeholder="Mecânico" />
+          </label>
+
+          <label className="field-label">
+            Admissão
+            <input type="date" {...register("admissionDate")} />
+          </label>
+
+          <label className="field-label">
+            Status
+            <select {...register("status")}>
+              <option value="trial">{employeeStatusLabels.trial}</option>
+              <option value="active">{employeeStatusLabels.active}</option>
+              <option value="inactive">{employeeStatusLabels.inactive}</option>
+            </select>
+          </label>
+
+          <div className="form-section-title">Contrato</div>
+
+          <label className="field-label">
+            Tipo
+            <select {...register("paymentType")}>
+              <option value="monthly">Mensalista</option>
+              <option value="hourly">Horista</option>
+            </select>
+          </label>
+
+          <label className="field-label">
+            Salário mensal
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              {...register("monthlySalary")}
+              placeholder="2500.00"
+              disabled={paymentType !== "monthly"}
+              aria-invalid={!!errors.monthlySalary}
+            />
+            <FieldError message={errors.monthlySalary?.message} />
+          </label>
+
+          <label className="field-label">
+            Valor da hora
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              {...register("hourlyRate")}
+              placeholder="15.00"
+              disabled={paymentType !== "hourly"}
+              aria-invalid={!!errors.hourlyRate}
+            />
+            <FieldError message={errors.hourlyRate?.message} />
+          </label>
+
+          <details className="advanced-fields">
+            <summary>Regras avançadas de jornada</summary>
+            <div className="advanced-fields-grid">
+              <label className="field-label">
+                Jornada semanal (h)
+                <input type="number" min="1" step="0.5" {...register("weeklyHours")} />
+              </label>
+              <label className="field-label">
+                Minutos por dia
+                <input type="number" min="1" step="1" {...register("dailyMinutes")} />
+              </label>
+              <label className="field-label">
+                Horas mensais (h)
+                <input type="number" min="1" step="0.5" {...register("monthlyHours")} />
+              </label>
+              <fieldset style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 10 }}>
+                <legend style={{ fontWeight: 600 }}>Dias de trabalho</legend>
+                {weekdayOptions.map((day) => (
+                  <label key={day.value} style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
+                    <input type="checkbox" checked={workDays.includes(day.value)} onChange={() => toggleWorkDay(day.value)} />
+                    {day.label}
+                  </label>
+                ))}
+                <FieldError message={errors.workDays?.message} />
+              </fieldset>
+              <label className="field-label">
+                Extra %
+                <input type="number" min="0" step="1" {...register("overtimePercent")} />
+              </label>
+              <label className="field-label">
+                Noturno %
+                <input type="number" min="0" step="1" {...register("nightPercent")} />
+              </label>
+            </div>
+          </details>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center", gridColumn: "1 / -1" }}>
+            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+              {editingId ? "Salvar alterações" : "Cadastrar funcionário"}
+            </button>
+            <button type="button" className="btn-ghost" onClick={closeForm}>Cancelar</button>
+          </div>
+        </form>
+      ) : null}
+
+      {employees.length > 0 ? (
+        <section>
           {filtered.length === 0 ? (
             <div style={{ color: "var(--muted)", padding: 16 }}>Nenhum funcionário encontrado para "{search}".</div>
           ) : (
@@ -256,8 +323,9 @@ export function EmployeesTab({
                     justifyContent: "space-between",
                     alignItems: "center",
                     border: "1px solid var(--border)",
-                    borderRadius: 10,
+                    borderRadius: "var(--r-md)",
                     padding: "12px 14px",
+                    background: "var(--surface)",
                     opacity: emp.active ? 1 : 0.55,
                     flexWrap: "wrap",
                   }}
@@ -277,22 +345,22 @@ export function EmployeesTab({
                     ) : null}
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button type="button" onClick={() => onEditEmployee(emp)} style={{ fontSize: "0.82rem", padding: "5px 10px" }}>Editar</button>
+                    <button type="button" className="btn-ghost btn-sm" onClick={() => openEditForm(emp)}>Editar</button>
                     <button
                       type="button"
+                      className="btn-ghost btn-sm"
                       onClick={() => handleShowHistory(emp)}
                       disabled={loadingHistory}
-                      style={{ fontSize: "0.82rem", padding: "5px 10px" }}
                     >
                       Histórico
                     </button>
-                    <button type="button" onClick={() => onToggleEmployeeActive(emp)} style={{ fontSize: "0.82rem", padding: "5px 10px" }}>
+                    <button type="button" className="btn-ghost btn-sm" onClick={() => onToggleEmployeeActive(emp)}>
                       {emp.active ? "Inativar" : "Reativar"}
                     </button>
                     <button
                       type="button"
-                      onClick={() => onDeleteEmployee(emp)}
-                      style={{ fontSize: "0.82rem", padding: "5px 10px", color: "var(--danger)", borderColor: "var(--danger)" }}
+                      className="btn-danger btn-sm"
+                      onClick={() => handleDelete(emp)}
                     >
                       Excluir
                     </button>

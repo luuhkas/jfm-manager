@@ -1,43 +1,65 @@
-import type { FormEvent } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { Holiday } from "../pontoTypes";
-import type { HolidayFormState } from "../pontoPageShared";
 import { holidayScopeLabels } from "../pontoPageShared";
+import { holidayFormSchema, type HolidayFormValues } from "../forms";
 
 interface HolidaysTabProps {
-  holidayForm: HolidayFormState;
   holidays: Holiday[];
   monthStartDate: string;
   monthEndDate: string;
+  workDate: string;
   disabled: boolean;
-  onSaveHoliday: (event: FormEvent<HTMLFormElement>) => void;
-  onSetHolidayForm: (updater: (current: HolidayFormState) => HolidayFormState) => void;
+  onSaveHoliday: (values: HolidayFormValues) => Promise<boolean>;
   onRemoveHoliday: (holiday: Holiday) => void;
 }
 
 export function HolidaysTab({
-  holidayForm,
   holidays,
   monthStartDate,
   monthEndDate,
+  workDate,
   disabled,
   onSaveHoliday,
-  onSetHolidayForm,
   onRemoveHoliday,
 }: HolidaysTabProps) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<HolidayFormValues>({
+    resolver: zodResolver(holidayFormSchema),
+    defaultValues: { date: workDate, name: "", scope: "company" },
+  });
+
+  /* segue a data/competência selecionada no topbar */
+  useEffect(() => {
+    setValue("date", workDate);
+  }, [workDate, setValue]);
+
+  const submit = handleSubmit(async (values) => {
+    const ok = await onSaveHoliday(values);
+    if (ok) reset({ ...values, name: "" });
+  });
+
   return (
     <section style={{ marginBottom: 20 }}>
-      <h2 style={{ fontSize: 22, margin: "0 0 12px" }}>Feriados</h2>
+      <h2 className="section-title spaced">Feriados</h2>
       <form
-        onSubmit={onSaveHoliday}
+        onSubmit={submit}
+        noValidate
         style={{
           display: "grid",
           gap: 12,
           gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-          alignItems: "end",
+          alignItems: "start",
           marginBottom: 12,
           padding: 16,
           border: "1px solid var(--border)",
-          borderRadius: 8,
+          borderRadius: "var(--r-md)",
           background: "var(--surface-soft)",
         }}
       >
@@ -45,33 +67,29 @@ export function HolidaysTab({
           Data
           <input
             type="date"
-            value={holidayForm.date}
+            {...register("date")}
             min={monthStartDate}
             max={monthEndDate}
             disabled={disabled}
-            onChange={(event) => onSetHolidayForm((current) => ({ ...current, date: event.target.value }))}
+            aria-invalid={!!errors.date}
           />
+          {errors.date ? <span className="field-error">{errors.date.message}</span> : null}
         </label>
 
         <label className="field-label">
           Nome
           <input
-            value={holidayForm.name}
+            {...register("name")}
             disabled={disabled}
-            onChange={(event) => onSetHolidayForm((current) => ({ ...current, name: event.target.value }))}
             placeholder="Ex.: Natal"
+            aria-invalid={!!errors.name}
           />
+          {errors.name ? <span className="field-error">{errors.name.message}</span> : null}
         </label>
 
         <label className="field-label">
           Tipo
-          <select
-            value={holidayForm.scope}
-            disabled={disabled}
-            onChange={(event) =>
-              onSetHolidayForm((current) => ({ ...current, scope: event.target.value as Holiday["scope"] }))
-            }
-          >
+          <select {...register("scope")} disabled={disabled}>
             {Object.entries(holidayScopeLabels).map(([scope, label]) => (
               <option key={scope} value={scope}>
                 {label}
@@ -80,13 +98,13 @@ export function HolidaysTab({
           </select>
         </label>
 
-        <button type="submit" disabled={disabled}>
+        <button type="submit" disabled={disabled || isSubmitting} style={{ alignSelf: "end" }}>
           Salvar feriado
         </button>
       </form>
 
       {holidays.length === 0 ? (
-        <div style={{ opacity: 0.75 }}>Nenhum feriado cadastrado nesta competência.</div>
+        <div style={{ color: "var(--muted)" }}>Nenhum feriado cadastrado nesta competência.</div>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {holidays.map((holiday) => (
@@ -98,7 +116,7 @@ export function HolidaysTab({
                 justifyContent: "space-between",
                 alignItems: "center",
                 border: "1px solid var(--border)",
-                borderRadius: 8,
+                borderRadius: "var(--r-md)",
                 padding: 10,
                 background: "var(--surface)",
               }}
@@ -106,7 +124,7 @@ export function HolidaysTab({
               <span>
                 <b>{holiday.date}</b> - {holiday.name} ({holidayScopeLabels[holiday.scope]})
               </span>
-              <button type="button" disabled={disabled} onClick={() => onRemoveHoliday(holiday)}>
+              <button type="button" className="btn-sm" disabled={disabled} onClick={() => onRemoveHoliday(holiday)}>
                 Remover
               </button>
             </div>

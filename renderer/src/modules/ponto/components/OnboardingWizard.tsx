@@ -39,7 +39,7 @@ export function OnboardingWizard({ onStart }: OnboardingWizardProps) {
             width: 56, height: 56,
             background: "linear-gradient(140deg, var(--accent-strong), var(--accent))",
             borderRadius: "var(--r-lg)",
-            color: "#fff", fontWeight: 900, fontSize: 20,
+            color: "var(--accent-fg)", fontWeight: 900, fontSize: 20,
             boxShadow: "0 4px 16px color-mix(in srgb, var(--accent) 40%, transparent)",
           }}>
             JF

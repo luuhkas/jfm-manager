@@ -54,7 +54,7 @@ export function EmployeeReportTab({
         }}
       >
         <div>
-          <h2 style={{ fontSize: 22, margin: "0 0 4px" }}>Relatório individual</h2>
+          <h2 className="section-title">Relatório individual</h2>
           <div style={{ opacity: 0.75 }}>Conferência diária da competência {monthKey}</div>
         </div>
 

@@ -1,0 +1,76 @@
+/* ═══════════════════════════════════════════════════════════
+   JFM Manager — Design tokens
+   Tema único via light-dark(): o valor claro/escuro resolve
+   automaticamente pelo color-scheme (sistema ou data-theme).
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  color-scheme: dark light;
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }
+
+:root {
+  /* ── Tipografia ── */
+  --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ── Superfícies ── */
+  --bg:             light-dark(#f2f5f9, #0f141c);
+  --surface:        light-dark(#ffffff, #151b26);
+  --surface-soft:   light-dark(#f8fafc, #121722);
+  --surface-raised: light-dark(#eef2f7, #1a2230);
+  --surface-strong: light-dark(#e4eaf2, #212b3d);
+  --input-bg:       light-dark(#ffffff, #0d121b);
+
+  /* ── Bordas ── */
+  --border-subtle:  light-dark(#e7ecf2, #1e2634);
+  --border:         light-dark(#d4dce6, #2b3649);
+  --border-strong:  light-dark(#a9b6c6, #40506b);
+
+  /* ── Texto ── */
+  --text:     light-dark(#182032, #e8edf6);
+  --muted:    light-dark(#56637a, #94a3bc);
+  --disabled: light-dark(#98a4b5, #52607a);
+
+  /* ── Marca (periwinkle do ícone JFM) ── */
+  --accent:        light-dark(#2e63d8, #8ab4ff);
+  --accent-hover:  light-dark(#2554bd, #a3c3ff);
+  --accent-strong: light-dark(#2554bd, #6d9dfc);
+  --accent-fg:     light-dark(#ffffff, #0d1526);
+  --accent-bg:     light-dark(#e6eeff, #1c2a45);
+  --accent-border: color-mix(in srgb, var(--accent) 30%, transparent);
+
+  /* ── Estados ── */
+  --success:    light-dark(#188345, #6fd68f);
+  --success-bg: light-dark(#ddf3e4, #13271c);
+  --warning:    light-dark(#955f0b, #e6bd66);
+  --warning-bg: light-dark(#fbf0d3, #2a2112);
+  --danger:     light-dark(#c62f38, #f38177);
+  --danger-bg:  light-dark(#fce7e7, #2d1613);
+
+  /* ── Sombras ── */
+  --shadow-xs: 0 1px 2px  light-dark(rgba(16, 24, 40, 0.06), rgba(0, 0, 0, 0.40));
+  --shadow-sm: 0 2px 8px  light-dark(rgba(16, 24, 40, 0.08), rgba(0, 0, 0, 0.45));
+  --shadow:    0 4px 16px light-dark(rgba(16, 24, 40, 0.10), rgba(0, 0, 0, 0.50));
+  --shadow-lg: 0 8px 32px light-dark(rgba(16, 24, 40, 0.14), rgba(0, 0, 0, 0.60));
+  --shadow-xl: 0 20px 64px light-dark(rgba(16, 24, 40, 0.18), rgba(0, 0, 0, 0.72));
+
+  /* ── Raios ── */
+  --r-sm:   6px;
+  --r:      8px;
+  --r-md:   10px;
+  --r-lg:   14px;
+  --r-xl:   20px;
+  --r-full: 9999px;
+
+  /* ── Movimento ── */
+  --ease:   cubic-bezier(0.2, 0, 0.13, 1);
+  --t-fast: 100ms var(--ease);
+  --t:      160ms var(--ease);
+  --t-slow: 250ms var(--ease);
+
+  /* ── Layout ── */
+  --sidebar-w:   228px;
+  --content-max: 1240px;
+}

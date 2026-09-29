@@ -169,7 +169,7 @@ export function HoleriteTab({
     <section>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
         <div>
-          <h2 style={{ fontSize: 22, margin: "0 0 4px" }}>Holerites — {monthKey}</h2>
+          <h2 className="section-title">Holerites — {monthKey}</h2>
           <div style={{ color: "var(--muted)" }}>Gere o recibo de salário individual para cada funcionário.</div>
         </div>
         <button type="button" onClick={handleGenerateAll} disabled={generatingAll || employees.filter(e => e.active).length === 0}>

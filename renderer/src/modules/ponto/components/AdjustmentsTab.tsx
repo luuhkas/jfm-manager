@@ -1,144 +1,185 @@
-import type { FormEvent } from "react";
-import type { Employee, TimeAdjustment, TimeEventType } from "../pontoTypes";
-import { timeEventTypeLabels, type AdjustmentFormState } from "../pontoPageShared";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { Employee, TimeAdjustment } from "../pontoTypes";
+import { timeEventTypeLabels } from "../pontoPageShared";
+import { adjustmentFormSchema, type AdjustmentFormValues } from "../forms";
 
 interface AdjustmentsTabProps {
-  adjustmentForm: AdjustmentFormState;
   adjustments: TimeAdjustment[];
   employees: Employee[];
   monthStartDate: string;
   monthEndDate: string;
+  workDate: string;
   disabled: boolean;
-  onSaveAdjustment: (event: FormEvent<HTMLFormElement>) => void;
-  onUpdateAdjustmentForm: (field: keyof AdjustmentFormState, value: string) => void;
+  onSaveAdjustment: (values: AdjustmentFormValues) => Promise<boolean>;
 }
 
 export function AdjustmentsTab({
-  adjustmentForm,
   adjustments,
   employees,
   monthStartDate,
   monthEndDate,
+  workDate,
   disabled,
   onSaveAdjustment,
-  onUpdateAdjustmentForm,
 }: AdjustmentsTabProps) {
+  const [open, setOpen] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<AdjustmentFormValues>({
+    resolver: zodResolver(adjustmentFormSchema),
+    defaultValues: {
+      employeeId: employees[0]?.id ?? "",
+      workDate,
+      time: "08:00",
+      type: "IN",
+      reason: "",
+    },
+  });
+
+  /* data selecionada no topbar vira o padrão do ajuste */
+  useEffect(() => {
+    setValue("workDate", workDate);
+  }, [workDate, setValue]);
+
+  const submit = handleSubmit(async (values) => {
+    const ok = await onSaveAdjustment(values);
+    if (ok) {
+      reset({ ...values, reason: "" });
+      setOpen(false);
+    }
+  });
+
+  if (employees.length === 0) return null;
+
   return (
-    <>
-      {employees.length > 0 ? (
-        <section>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 14px", color: "var(--text)" }}>Ajustes manuais</h2>
+    <section>
+      {/* ── Cabeçalho ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: open ? 12 : 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>Ajustes manuais</span>
+          {adjustments.length > 0 ? (
+            <span className="badge badge-neutral">{adjustments.length}</span>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="btn-ghost btn-sm"
+          disabled={disabled}
+          onClick={() => setOpen((v) => !v)}
+          style={{ fontSize: 12 }}
+        >
+          {open ? "Cancelar" : "+ Novo ajuste"}
+        </button>
+      </div>
 
-          <form
-            onSubmit={onSaveAdjustment}
-            style={{
-              display: "grid",
-              gap: 12,
-              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-              alignItems: "end",
-              marginBottom: 20,
-              padding: 16,
-              border: "1px solid var(--border)",
-              borderRadius: "var(--r-md)",
-              background: "var(--surface-soft)",
-            }}
-          >
-            <label className="field-label">
-              Funcionário
-              <select
-                value={adjustmentForm.employeeId}
-                disabled={disabled}
-                onChange={(e) => onUpdateAdjustmentForm("employeeId", e.target.value)}
-              >
-                {employees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>{emp.name}</option>
-                ))}
-              </select>
-            </label>
+      {/* ── Formulário ── */}
+      {open ? (
+        <form
+          onSubmit={submit}
+          noValidate
+          style={{
+            display: "grid",
+            gap: 12,
+            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+            alignItems: "start",
+            padding: 14,
+            border: "1px solid var(--border)",
+            borderRadius: "var(--r-md)",
+            background: "var(--surface-soft)",
+            marginBottom: 12,
+          }}
+        >
+          <label className="field-label">
+            Funcionário
+            <select {...register("employeeId")} disabled={disabled} aria-invalid={!!errors.employeeId}>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>{emp.name}</option>
+              ))}
+            </select>
+            {errors.employeeId ? <span className="field-error">{errors.employeeId.message}</span> : null}
+          </label>
 
-            <label className="field-label">
-              Data
-              <input
-                type="date"
-                value={adjustmentForm.workDate}
-                min={monthStartDate}
-                max={monthEndDate}
-                disabled={disabled}
-                onChange={(e) => onUpdateAdjustmentForm("workDate", e.target.value)}
-              />
-            </label>
+          <label className="field-label">
+            Data
+            <input type="date" {...register("workDate")} min={monthStartDate} max={monthEndDate} disabled={disabled} />
+          </label>
 
-            <label className="field-label">
-              Hora
-              <input
-                type="time"
-                value={adjustmentForm.time}
-                disabled={disabled}
-                onChange={(e) => onUpdateAdjustmentForm("time", e.target.value)}
-              />
-            </label>
+          <label className="field-label">
+            Hora
+            <input type="time" {...register("time")} disabled={disabled} />
+          </label>
 
-            <label className="field-label">
-              Tipo
-              <select
-                value={adjustmentForm.type}
-                disabled={disabled}
-                onChange={(e) => onUpdateAdjustmentForm("type", e.target.value as TimeEventType)}
-              >
-                <option value="IN">{timeEventTypeLabels.IN}</option>
-                <option value="OUT">{timeEventTypeLabels.OUT}</option>
-              </select>
-            </label>
+          <label className="field-label">
+            Tipo
+            <select {...register("type")} disabled={disabled}>
+              <option value="IN">{timeEventTypeLabels.IN}</option>
+              <option value="OUT">{timeEventTypeLabels.OUT}</option>
+            </select>
+          </label>
 
-            <label className="field-label" style={{ gridColumn: "span 2" }}>
-              Motivo
-              <input
-                value={adjustmentForm.reason}
-                disabled={disabled}
-                onChange={(e) => onUpdateAdjustmentForm("reason", e.target.value)}
-                placeholder="Ex.: funcionário esqueceu de registrar saída"
-              />
-            </label>
+          <label className="field-label" style={{ gridColumn: "span 2" }}>
+            Motivo
+            <input
+              {...register("reason")}
+              disabled={disabled}
+              placeholder="Ex.: funcionário esqueceu de registrar saída"
+              autoFocus
+              aria-invalid={!!errors.reason}
+            />
+            {errors.reason ? <span className="field-error">{errors.reason.message}</span> : null}
+          </label>
 
-            <button type="submit" disabled={disabled}>Salvar ajuste</button>
-          </form>
-        </section>
+          <button type="submit" disabled={disabled || isSubmitting} style={{ alignSelf: "end" }}>
+            Salvar ajuste
+          </button>
+        </form>
       ) : null}
 
+      {/* ── Últimos ajustes ── */}
       {adjustments.length > 0 ? (
-        <section style={{ marginBottom: 20 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 12px", color: "var(--text)" }}>Ajustes auditados</h2>
-          <div style={{ display: "grid", gap: 6 }}>
-            {adjustments.slice(0, 8).map((adj) => {
-              const emp = employees.find((e) => e.id === adj.employeeId);
-              return (
-                <div
-                  key={adj.id}
-                  style={{
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--r)",
-                    padding: "9px 12px",
-                    background: "var(--surface)",
-                    fontSize: 13,
-                    display: "flex",
-                    gap: 8,
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                  }}
-                >
-                  <b style={{ color: "var(--text)" }}>{emp?.name ?? "Funcionário removido"}</b>
-                  <span style={{ color: "var(--muted)" }}>·</span>
-                  <span style={{ color: "var(--muted)" }}>{adj.workDate}</span>
-                  <span style={{ color: "var(--accent)", fontWeight: 600 }}>{timeEventTypeLabels[adj.type]}</span>
-                  <span style={{ color: "var(--muted)" }}>{new Date(adj.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
-                  <span style={{ color: "var(--muted)" }}>·</span>
-                  <span style={{ color: "var(--text)" }}>{adj.reason}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+        <div style={{ display: "grid", gap: 5 }}>
+          {adjustments.slice(0, 6).map((adj) => {
+            const emp = employees.find((e) => e.id === adj.employeeId);
+            return (
+              <div
+                key={adj.id}
+                style={{
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--r)",
+                  padding: "8px 12px",
+                  background: "var(--surface)",
+                  fontSize: 12.5,
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  color: "var(--muted)",
+                }}
+              >
+                <b style={{ color: "var(--text)" }}>{emp?.name ?? "—"}</b>
+                <span>·</span>
+                <span>{adj.workDate}</span>
+                <span style={{ color: "var(--accent)", fontWeight: 600 }}>{timeEventTypeLabels[adj.type]}</span>
+                <span>{new Date(adj.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                <span>·</span>
+                <span style={{ color: "var(--text)" }}>{adj.reason}</span>
+              </div>
+            );
+          })}
+          {adjustments.length > 6 ? (
+            <div style={{ fontSize: 12, color: "var(--disabled)", paddingLeft: 4 }}>
+              +{adjustments.length - 6} ajuste(s) anteriores no mês.
+            </div>
+          ) : null}
+        </div>
       ) : null}
-    </>
+    </section>
   );
 }

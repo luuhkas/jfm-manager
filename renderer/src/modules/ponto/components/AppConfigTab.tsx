@@ -38,11 +38,11 @@ export function AppConfigTab({ settings, onSave, onBackupData, onRestoreData }: 
 
   return (
     <section style={{ marginBottom: 20 }}>
-      <h2 style={{ fontSize: 22, margin: "0 0 20px" }}>Configurações do sistema</h2>
+      <h2 className="section-title spaced">Configurações do sistema</h2>
 
       <form onSubmit={handleSave} style={{ display: "grid", gap: 24 }}>
-        <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 20, background: "var(--surface-soft)" }}>
-          <h3 style={{ margin: "0 0 14px", color: "var(--accent)", fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Dados da empresa</h3>
+        <div className="card">
+          <h3 className="card-title">Dados da empresa</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
             <label className="field-label">
               Razão Social
@@ -59,8 +59,8 @@ export function AppConfigTab({ settings, onSave, onBackupData, onRestoreData }: 
           </div>
         </div>
 
-        <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 20, background: "var(--surface-soft)" }}>
-          <h3 style={{ margin: "0 0 14px", color: "var(--accent)", fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Aparência</h3>
+        <div className="card">
+          <h3 className="card-title">Aparência</h3>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {(["system", "dark", "light"] as const).map((t) => (
               <label
@@ -96,8 +96,8 @@ export function AppConfigTab({ settings, onSave, onBackupData, onRestoreData }: 
           </div>
         </div>
 
-        <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 20, background: "var(--surface-soft)" }}>
-          <h3 style={{ margin: "0 0 14px", color: "var(--accent)", fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Backup automático</h3>
+        <div className="card">
+          <h3 className="card-title">Backup automático</h3>
           <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 8 }}>
             <input
               type="checkbox"
@@ -112,8 +112,8 @@ export function AppConfigTab({ settings, onSave, onBackupData, onRestoreData }: 
           </div>
         </div>
 
-        <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 20, background: "var(--surface-soft)" }}>
-          <h3 style={{ margin: "0 0 14px", color: "var(--accent)", fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Backup manual</h3>
+        <div className="card">
+          <h3 className="card-title">Backup manual</h3>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <div>
               <p style={{ margin: "0 0 8px", color: "var(--muted)", fontSize: "0.88rem" }}>Salva uma cópia completa do banco de dados.</p>
@@ -127,7 +127,7 @@ export function AppConfigTab({ settings, onSave, onBackupData, onRestoreData }: 
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button type="submit" style={{ background: "var(--accent-strong)", color: "#fff", border: "none" }}>
+          <button type="submit" className="btn-primary">
             Salvar configurações
           </button>
           {saved ? <span style={{ color: "var(--success)", fontWeight: 600 }}>Salvo!</span> : null}

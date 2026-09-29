@@ -1,35 +1,4 @@
-import type { EmployeeStatus, Holiday, PaymentType, Weekday, WorkOrderStatus } from "./pontoTypes";
-
-export interface EmployeeFormState {
-  name: string;
-  cpf: string;
-  role: string;
-  admissionDate: string;
-  status: EmployeeStatus;
-  paymentType: PaymentType;
-  monthlySalary: string;
-  hourlyRate: string;
-  weeklyHours: string;
-  dailyMinutes: string;
-  monthlyHours: string;
-  workDays: Weekday[];
-  overtimePercent: string;
-  nightPercent: string;
-}
-
-export interface AdjustmentFormState {
-  employeeId: string;
-  workDate: string;
-  time: string;
-  type: "IN" | "OUT";
-  reason: string;
-}
-
-export interface HolidayFormState {
-  date: string;
-  name: string;
-  scope: Holiday["scope"];
-}
+import type { EmployeeStatus, Holiday, Weekday, WorkOrderStatus } from "./pontoTypes";
 
 export interface WorkOrderFormState {
   number: string;
@@ -48,23 +17,6 @@ export type TabKey =
   | "bank"
   | "orders"
   | "settings";
-
-export const emptyEmployeeForm: EmployeeFormState = {
-  name: "",
-  cpf: "",
-  role: "",
-  admissionDate: "",
-  status: "active",
-  paymentType: "monthly",
-  monthlySalary: "",
-  hourlyRate: "",
-  weeklyHours: "44",
-  dailyMinutes: "480",
-  monthlyHours: "220",
-  workDays: [1, 2, 3, 4, 5],
-  overtimePercent: "50",
-  nightPercent: "20",
-};
 
 export const emptyWorkOrderForm: WorkOrderFormState = {
   number: "",
@@ -110,12 +62,3 @@ export const workOrderStatusLabels: Record<WorkOrderStatus, string> = {
   completed: "Concluída",
   cancelled: "Cancelada",
 };
-
-export const tabs: Array<{ key: TabKey; label: string }> = [
-  { key: "today", label: "Hoje" },
-  { key: "employees", label: "Funcionários" },
-  { key: "closing", label: "Fechamento" },
-  { key: "bank", label: "Banco de Horas" },
-  { key: "orders", label: "Ordens de Serviço" },
-  { key: "settings", label: "Configurações" },
-];

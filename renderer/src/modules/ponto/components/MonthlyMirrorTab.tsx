@@ -128,7 +128,7 @@ export function MonthlyMirrorTab({
         }}
       >
         <div>
-          <h2 style={{ fontSize: 22, margin: "0 0 4px" }}>Espelho mensal</h2>
+          <h2 className="section-title">Espelho mensal</h2>
           <div style={{ opacity: 0.75 }}>
             {monthClosing
               ? `Competência ${monthKey} fechada em ${new Date(monthClosing.closedAt).toLocaleString()}`
@@ -146,7 +146,7 @@ export function MonthlyMirrorTab({
             Exportar CSV
           </button>
 
-          <button type="button" onClick={onOpenHolerites} style={{ background: "var(--accent-strong)", color: "#fff", border: "none" }}>
+          <button type="button" onClick={onOpenHolerites} className="btn-primary">
             Holerites PDF
           </button>
 

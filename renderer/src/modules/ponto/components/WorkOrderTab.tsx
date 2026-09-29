@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ClipboardList } from "lucide-react";
 import type { Employee, WorkOrder, WorkOrderStatus } from "../pontoTypes";
 import { emptyWorkOrderForm, workOrderStatusLabels, type WorkOrderFormState } from "../pontoPageShared";
 import { formatMinutes } from "../pontoUtils";
@@ -116,7 +117,7 @@ export function WorkOrderTab({ employees, workOrders, onSave, onDelete, onGetNex
     <section>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
         <div>
-          <h2 style={{ fontSize: 22, margin: "0 0 4px" }}>Ordens de Serviço</h2>
+          <h2 className="section-title">Ordens de Serviço</h2>
           <div style={{ color: "var(--muted)" }}>
             {workOrders.length} OS — {counts.open ?? 0} abertas, {counts.in_progress ?? 0} em andamento, {counts.completed ?? 0} concluídas
           </div>
@@ -204,10 +205,7 @@ export function WorkOrderTab({ employees, workOrders, onSave, onDelete, onGetNex
         workOrders.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                <rect x="8" y="2" width="8" height="4" rx="1"/>
-              </svg>
+              <ClipboardList size={22} strokeWidth={1.8} />
             </div>
             <h3>Nenhuma ordem de serviço</h3>
             <p>Crie a primeira OS para acompanhar serviços, atribuir responsáveis e registrar prazos.</p>
